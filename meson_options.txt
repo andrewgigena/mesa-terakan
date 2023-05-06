@@ -204,7 +204,7 @@ option(
   'vulkan-drivers',
   type : 'array',
   value : ['auto'],
-  choices : ['auto', 'amd', 'broadcom', 'freedreno', 'intel', 'intel_hasvk',
+  choices : ['auto', 'amd', 'amd_terascale', 'broadcom', 'freedreno', 'intel', 'intel_hasvk',
              'panfrost', 'swrast', 'virtio', 'imagination-experimental',
              'microsoft-experimental', 'nouveau', 'asahi', 'gfxstream',
              'all'],
@@ -289,7 +289,7 @@ option(
   type : 'array',
   value : [],
   choices : [
-    'device-select', 'intel-nullhw', 'overlay', 'screenshot', 
+    'device-select', 'intel-nullhw', 'overlay', 'screenshot',
     'vram-report-limit',
   ],
   description : 'List of vulkan layers to build'
