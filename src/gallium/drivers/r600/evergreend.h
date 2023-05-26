@@ -2449,6 +2449,13 @@
 #define   S_028C08_PIX_CENTER_HALF(x)                  (((unsigned)(x) & 0x1) << 0)
 #define   G_028C08_PIX_CENTER_HALF(x)                  (((x) >> 0) & 0x1)
 #define   C_028C08_PIX_CENTER_HALF                     0xFFFFFFFE
+#define   S_028C08_ROUND_MODE(x)                       (((unsigned)(x) & 0x3) << 1)
+#define   G_028C08_ROUND_MODE(x)                       (((x) >> 1) & 0x3)
+#define   C_028C08_ROUND_MODE                          0xFFFFFFF9
+#define     V_028C08_X_TRUNCATE                        0
+#define     V_028C08_X_ROUND                           1
+#define     V_028C08_X_ROUND_TO_EVEN                   2
+#define     V_028C08_X_ROUND_TO_ODD                    3
 #define   S_028C08_QUANT_MODE(x)                       (((unsigned)(x) & 0x7) << 3)
 #define   G_028C08_QUANT_MODE(x)                       (((x) >> 3) & 0x7)
 #define   C_028C08_QUANT_MODE                          0xFFFFFFC7
