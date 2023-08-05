@@ -1,4 +1,4 @@
-# Copyright © 2017 Intel Corporation
+# Copyright © 2023 Vitaliy Triang3l Kuzmin
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,36 +18,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_amd = include_directories('.')
+amd_terascale_registers_files = files(
+  '../../../gallium/drivers/r600/eg_sq.h',
+  '../../../gallium/drivers/r600/evergreend.h',
+  '../../../gallium/drivers/r600/r600_opcodes.h',
+  '../../../gallium/drivers/r600/r600_sq.h',
+  '../../../gallium/drivers/r600/r600d.h',
+  '../../../gallium/drivers/r600/r600d_common.h',
+  '../../../gallium/drivers/r600/r700_sq.h',
+)
 
-if with_amd_vk or with_gallium_radeonsi
-  subdir('addrlib')
-  subdir('common')
-  if with_llvm
-    subdir('llvm')
-  else
-    libamd_common_llvm = []
-  endif
-  subdir('compiler')
-endif
-if with_gallium_r600
-  subdir('terascale/common')
-endif
-
-if with_amd_vk
-  subdir('vulkan')
-  if with_aco_tests
-    subdir('compiler/tests')
-  endif
-endif
-if with_amd_terascale_vk
-  subdir('terascale/vulkan')
-endif
-
-if with_tools.contains('drm-shim')
-  subdir('drm-shim')
-endif
-
-if with_gallium_radeonsi
-  subdir('vpelib')
-endif
+idep_amd_terascale_registers = declare_dependency(
+  sources : [amd_terascale_registers_files],
+)
