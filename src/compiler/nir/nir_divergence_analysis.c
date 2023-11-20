@@ -445,6 +445,7 @@ visit_intrinsic(nir_intrinsic_instr *instr, struct divergence_state *state)
 
    case nir_intrinsic_load_ubo:
    case nir_intrinsic_load_ubo_vec4:
+   case nir_intrinsic_load_buffer_resource_r600:
       is_divergent = (instr->src[0].ssa->divergent && (nir_intrinsic_access(instr) & ACCESS_NON_UNIFORM)) ||
                      instr->src[1].ssa->divergent;
       break;
