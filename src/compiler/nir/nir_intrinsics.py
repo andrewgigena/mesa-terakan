@@ -1486,6 +1486,12 @@ store("tf_r600", [])
 load("buffer_resource_r600", src_comp=[1, 1], indices=[ACCESS, ID_BASE, BASE, COMPONENT, FORMAT, MEGA_FETCH_COUNT_R600],
      flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# Load from a constant cache (kcache) buffer.
+# src[] = { buffer index offset relative to ID_BASE }
+# ID_BASE = buffer index base
+# BASE = data address in vec4 elements
+load("kcache_r600", src_comp=[1], indices=[ACCESS, ID_BASE, BASE, COMPONENT], flags=[CAN_ELIMINATE, CAN_REORDER])
+
 # AMD GCN/RDNA specific intrinsics
 
 # This barrier is a hint that prevents moving the instruction that computes
