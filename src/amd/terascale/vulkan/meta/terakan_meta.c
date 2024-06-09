@@ -272,11 +272,10 @@ terakan_meta_begin_cb(struct terakan_gfx_command_writer * const command_writer,
                       uint32_t const cb_color_control_mode, uint32_t const cb_target_mask,
                       uint8_t const disable_blend_for_targets)
 {
-   terakan_meta_modify_state_draw_dword(
-      command_writer, TERAKAN_STATE_DRAW_INDEX_CB_COLOR_CONTROL,
-      TERAKAN_HW_STATE_DRAW_INDEX_CB_COLOR_CONTROL, &command_writer->hw_state_draw.cb_color_control,
-      S_028808_MODE(cb_target_mask ? cb_color_control_mode : V_028808_CB_DISABLE) |
-         S_028808_ROP3(0xCC));
+   terakan_meta_modify_state_draw_dword(command_writer, TERAKAN_STATE_DRAW_INDEX_CB_COLOR_CONTROL,
+                                        TERAKAN_HW_STATE_DRAW_INDEX_CB_COLOR_CONTROL,
+                                        &command_writer->hw_state_draw.cb_color_control,
+                                        S_028808_MODE(cb_color_control_mode) | S_028808_ROP3(0xCC));
 
    terakan_meta_modify_state_draw_dword(command_writer, TERAKAN_STATE_DRAW_INDEX_CB_TARGET_MASK,
                                         TERAKAN_HW_STATE_DRAW_INDEX_CB_TARGET_MASK,
@@ -286,6 +285,8 @@ terakan_meta_begin_cb(struct terakan_gfx_command_writer * const command_writer,
       /* Going to bind color targets for this meta draw. */
       terakan_state_draw_set_pending(&command_writer->state_draw,
                                      TERAKAN_STATE_DRAW_INDEX_CB_COLOR_RTV);
+      terakan_state_draw_set_pending(&command_writer->state_draw,
+                                     TERAKAN_STATE_DRAW_INDEX_CB_COLOR_UAV);
    }
 
    if (disable_blend_for_targets) {

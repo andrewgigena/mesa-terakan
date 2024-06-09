@@ -2185,7 +2185,8 @@ nir_intrinsic_can_reorder(nir_intrinsic_instr *instr)
               instr->intrinsic == nir_intrinsic_image_deref_load ||
               instr->intrinsic == nir_intrinsic_image_load ||
               instr->intrinsic == nir_intrinsic_ald_nv ||
-              instr->intrinsic == nir_intrinsic_load_sysval_nv) {
+              instr->intrinsic == nir_intrinsic_load_sysval_nv ||
+              instr->intrinsic == nir_intrinsic_load_buffer_resource_r600) {
       return nir_intrinsic_access(instr) & ACCESS_CAN_REORDER;
    } else {
       const nir_intrinsic_info *info =

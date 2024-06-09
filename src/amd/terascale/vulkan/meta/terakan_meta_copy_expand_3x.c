@@ -457,78 +457,76 @@ static uint32_t const terakan_meta_copy_expand_3x_ps_r9xx[] = {
       S_SQ_ALU_WORD1_OP2_ALU_INST(EG_V_SQ_ALU_WORD1_OP2_SQ_OP2_INST_MOV),
 };
 
-struct terakan_meta_shader const
-   terakan_meta_copy_expand_3x_ps =
+struct terakan_meta_shader const terakan_meta_copy_expand_3x_ps = {
+   .r8xx =
       {
-         .r8xx =
+         .program = terakan_meta_copy_expand_3x_ps_r8xx,
+         .program_size_bytes = sizeof(terakan_meta_copy_expand_3x_ps_r8xx),
+         .static_registers =
             {
-               .program = terakan_meta_copy_expand_3x_ps_r8xx,
-               .program_size_bytes = sizeof(terakan_meta_copy_expand_3x_ps_r8xx),
-               .static_registers =
+               .sq_pgm_resources =
                   {
-                     .sq_pgm_resources =
+                     S_028844_NUM_GPRS(4) | TERAKAN_META_SQ_PGM_RESOURCES_COMMON,
+                     TERAKAN_META_SQ_PGM_RESOURCES_2_COMMON,
+                  },
+               .stage =
+                  {
+                     .ps =
                         {
-                           S_028844_NUM_GPRS(4) | TERAKAN_META_SQ_PGM_RESOURCES_COMMON,
-                           TERAKAN_META_SQ_PGM_RESOURCES_2_COMMON,
-                        },
-                     .stage =
-                        {
-                           .ps =
+                           .sq_pgm_exports_ps = S_02884C_EXPORT_COLORS(1),
+                           .spi_ps_in_control =
                               {
-                                 .sq_pgm_exports_ps = S_02884C_EXPORT_COLORS(1),
-                                 .spi_ps_in_control =
-                                    {
-                                       S_0286CC_NUM_INTERP(1) | S_0286CC_LINEAR_GRADIENT_ENA(1),
-                                       S_0286D0_FIXED_PT_POSITION_ENA(1) |
-                                          S_0286D0_FIXED_PT_POSITION_ADDR(0),
-                                    },
-                                 .spi_baryc_cntl = S_0286E0_LINEAR_CENTER_ENA(1),
-                                 .cb_shader_mask = 0xF,
+                                 S_0286CC_NUM_INTERP(1) | S_0286CC_LINEAR_GRADIENT_ENA(1),
+                                 S_0286D0_FIXED_PT_POSITION_ENA(1) |
+                                    S_0286D0_FIXED_PT_POSITION_ADDR(0),
                               },
+                           .spi_baryc_cntl = S_0286E0_LINEAR_CENTER_ENA(1),
+                           .cb_shader_mask = 0xF,
                         },
                   },
             },
-         .r9xx =
+      },
+   .r9xx =
+      {
+         .program = terakan_meta_copy_expand_3x_ps_r9xx,
+         .program_size_bytes = sizeof(terakan_meta_copy_expand_3x_ps_r9xx),
+         .static_registers =
             {
-               .program = terakan_meta_copy_expand_3x_ps_r9xx,
-               .program_size_bytes = sizeof(terakan_meta_copy_expand_3x_ps_r9xx),
-               .static_registers =
+               .sq_pgm_resources =
                   {
-                     .sq_pgm_resources =
+                     S_028844_NUM_GPRS(4) | TERAKAN_META_SQ_PGM_RESOURCES_COMMON,
+                     TERAKAN_META_SQ_PGM_RESOURCES_2_COMMON,
+                  },
+               .stage =
+                  {
+                     .ps =
                         {
-                           S_028844_NUM_GPRS(4) | TERAKAN_META_SQ_PGM_RESOURCES_COMMON,
-                           TERAKAN_META_SQ_PGM_RESOURCES_2_COMMON,
-                        },
-                     .stage =
-                        {
-                           .ps =
+                           .sq_pgm_exports_ps = S_02884C_EXPORT_COLORS(1),
+                           .spi_ps_in_control =
                               {
-                                 .sq_pgm_exports_ps = S_02884C_EXPORT_COLORS(1),
-                                 .spi_ps_in_control =
-                                    {
-                                       S_0286CC_NUM_INTERP(1) | S_0286CC_LINEAR_GRADIENT_ENA(1),
-                                       S_0286D0_FIXED_PT_POSITION_ENA(1) |
-                                          S_0286D0_FIXED_PT_POSITION_ADDR(0),
-                                    },
-                                 .spi_baryc_cntl = S_0286E0_LINEAR_CENTER_ENA(1),
-                                 .cb_shader_mask = 0xF,
+                                 S_0286CC_NUM_INTERP(1) | S_0286CC_LINEAR_GRADIENT_ENA(1),
+                                 S_0286D0_FIXED_PT_POSITION_ENA(1) |
+                                    S_0286D0_FIXED_PT_POSITION_ADDR(0),
                               },
+                           .spi_baryc_cntl = S_0286E0_LINEAR_CENTER_ENA(1),
+                           .cb_shader_mask = 0xF,
                         },
                   },
             },
-         .kcache_needed = (uint16_t)1 << TERAKAN_KCACHE_BUFFER_PUSH_CONSTANTS,
-         .resources_needed =
+      },
+   .kcache_needed = (uint16_t)1 << TERAKAN_KCACHE_BUFFER_PUSH_CONSTANTS,
+   .resources_needed =
+      {
+         [BITSET_BITWORD(TERAKAN_RESOURCE_RANGE_SHADER_CONSTANT_ARRAYS_OR_META)] =
+            BITSET_BIT(TERAKAN_RESOURCE_RANGE_SHADER_CONSTANT_ARRAYS_OR_META),
+      },
+   .stage =
+      {
+         .ps =
             {
-               [BITSET_BITWORD(TERAKAN_RESOURCE_RANGE_SHADER_CONSTANT_ARRAYS_OR_META)] =
-                  BITSET_BIT(TERAKAN_RESOURCE_RANGE_SHADER_CONSTANT_ARRAYS_OR_META),
+               .db_shader_control = TERAKAN_META_DB_SHADER_CONTROL_PS_MEMORY_EXPORT,
             },
-         .stage =
-            {
-               .ps =
-                  {
-                     .db_shader_control = TERAKAN_META_DB_SHADER_CONTROL_PS_MEMORY_EXPORT,
-                  },
-            },
+      },
 };
 
 static void
@@ -543,7 +541,7 @@ terakan_meta_copy_expand_3x_begin(struct terakan_gfx_command_writer * const comm
    terakan_meta_set_vs(command_writer, TERAKAN_META_SHADER_POSITION_FROM_INDEX_VS);
    terakan_meta_set_ps(command_writer, TERAKAN_META_SHADER_COPY_EXPAND_3X_PS, true);
 
-   terakan_meta_begin_cb(command_writer, V_028808_CB_NORMAL, 0xF, 0b0);
+   terakan_meta_begin_cb(command_writer, V_028808_CB_DISABLE, 0xF, 0b0);
 
    command_writer->push_constants_state.up_to_date_push_constants_bound_to_stages &=
       ~VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -570,8 +568,11 @@ terakan_meta_copy_expand_3x_buffer_to_image(
       bytes_per_surfel, terakan_gfx_command_writer_physical_device(command_writer)
                            ->tiling_info.pipe_interleave_bytes_log2);
    /* For simplicity and not to explicitly handle UAV alignment as image slices are always aligned,
-    * adjusting only the destination offset in the push constants. Assuming that images are never
-    * 2^32 surfels or larger.
+    * adjusting only the destination offset in the push constants.
+    * `buffer_uav_validated_as_image` doesn't need to be handled because surfel rows already have
+    * the necessary pitch alignment, and using the same element format for the UAV as for the
+    * surfels.
+    * Assuming that images are never 2^32 surfels or larger.
     */
    VkDeviceSize const dst_aspect_size_surfels_minus_one =
       ((VkDeviceSize)dst_image->surface.aspects[0].size_bytes_shr8 << 8) / bytes_per_surfel - 1;

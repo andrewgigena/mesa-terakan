@@ -151,6 +151,17 @@ terakan_physical_device_chip_family_info_init(
       chip_family_info_out->has_vertex_cache = true;
    }
 
+   switch (chip_family) {
+   case CHIP_CYPRESS:
+   case CHIP_HEMLOCK:
+   case CHIP_BARTS:
+   case CHIP_CAYMAN:
+      chip_family_info_out->two_shader_engines_max = true;
+      break;
+   default:
+      chip_family_info_out->two_shader_engines_max = false;
+   }
+
    if (is_r9xx) {
       chip_family_info_out->sq_max_threads = 256;
       chip_family_info_out->sq_ps_threads_r8xx = 0;
@@ -189,6 +200,13 @@ terakan_physical_device_chip_family_info_init(
    default:
       chip_family_info_out->sq_max_stack_entries = 512;
    }
+
+   /* TODO(Triang3l): See how MBCNT behaves on wave32 chips and possibly scale the wave ID by 32
+    * there.
+    */
+   chip_family_info_out->uav_immediate_size_texels =
+      chip_family_info_out->sq_max_threads
+      << (6 + (unsigned)chip_family_info_out->two_shader_engines_max);
 }
 
 /* Winsys-specific extensions are not handled, they should be configured by the
@@ -210,7 +228,51 @@ terakan_physical_device_get_capabilities(
 
    /* Vulkan 1.0. */
 
+   /* Buffer resource bounds checking hardware behavior according to testing on Barts:
+    *
+    * For element sizes within 4 bytes, the entire element size must be in bounds for the data to be
+    * fetched. Otherwise, 0 is loaded into all channels.
+    *
+    * For element sizes larger than 4 bytes, however, only the first 4 bytes are checked, and if
+    * they're in bounds, the entire element is fetched (otherwise all channels receive 0).
+    * Therefore, if the size of the buffer is 3 bytes, a 32_32_32_32 fetch at offset 0 will return
+    * zeros, but if the buffer is 4 bytes large, all bytes [0, 15] will be loaded.
+    *
+    * This allows for vectorizing 32-bit uniform buffer and storage buffer loads freely without
+    * robustBufferAccess. However, this also makes it possible to read from beyond the memory range
+    * bound to the buffer, which is not allowed with robustBufferAccess.
+    *
+    * Section 46. "Features" of the Vulkan 1.3.292 specification says:
+    *
+    *     "If robustBufferAccess2 is enabled, vertex input attributes are considered out of bounds
+    *     if the offset of the attribute in the bound vertex buffer range plus the size of the
+    *     attribute is greater than the byte size of the memory range bound to the vertex buffer
+    *     binding.
+    *
+    *     If a vertex input attribute is out of bounds, the raw data extracted are zero values, and
+    *     missing G, B, or A components are filled with (0,0,1)."
+    *
+    * Thus, for vertex input, the bounds checking behavior for elements larger than 4 bytes must
+    * explicitly be taken into account with robustBufferAccess2 and even robustBufferAccess as
+    * out-of-bounds vertex input loads must not read from outside the memory range bound to the
+    * buffer. One approach is to subtract element size minus 4 from the size of the buffer.
+    *
+    * During a buffer resource fetch, the global address (which is the base address plus index times
+    * stride plus the offset from the fetch instruction) is implicitly rounded down to the alignment
+    * requirement of the element format: min(bytes per element, 4), which matches the alignment
+    * restriction for structures like vertices described in "4.4.6 Element Alignment" of the
+    * Direct3D 11.3 Functional Specification. (Non-power-of-two element sizes below 4 aren't
+    * important because during testing on Barts, 8_8_8 and 16_16_16 buffer fetches produced
+    * completely invalid values.)
+    *
+    * Bounds checking doesn't involve the base address from the buffer resource descriptor, only the
+    * index and offset part. Therefore, if the base address is misaligned, it's possible to read
+    * bytes that precede the base address. However, that doesn't permit reading from beyond the end
+    * of the [unaligned base, unaligned base + size) range, as long as elements are up to 4 bytes
+    * large.
+    */
    features_out->robustBufferAccess = true;
+
    features_out->fullDrawIndexUint32 = true;
    features_out->imageCubeArray = true;
    features_out->independentBlend = true;
@@ -232,7 +294,7 @@ terakan_physical_device_get_capabilities(
    features_out->textureCompressionBC = true;
    /* TODO(Triang3l): occlusionQueryPrecise. */
    /* TODO(Triang3l): pipelineStatisticsQuery. */
-   /* TODO(Triang3l): fragmentStoresAndAtomics. */
+   features_out->fragmentStoresAndAtomics = true;
    /* TODO(Triang3l): shaderTessellationAndGeometryPointSize. */
    /* TODO(Triang3l): Possibly shaderImageGatherExtended. */
    /* TODO(Triang3l): Shader storage image format features. */
@@ -270,6 +332,11 @@ terakan_physical_device_get_capabilities(
     * of comparing the index to the buffer size in shaders to implement robustness with the offset,
     * the index value can be clamped to this maximum range as unsigned so that adding any alignment
     * offset after the clamping won't cause wraparound.
+    *
+    * With `buffer_uav_validated_as_image`, the base address rounding and the offsetting in shaders
+    * are also performed to make sure a CB_COLOR with the smallest possible PITCH_TILE_MAX and
+    * SLICE_TILE_MAX for the element size is considered in bounds of the BO without adding too much
+    * BO size padding.
     */
    uint32_t const max_uav_range_bytes = ~(((uint32_t)1 << tile_pipe_interleave_bytes_log2) - 1);
 
@@ -278,11 +345,25 @@ terakan_physical_device_get_capabilities(
     * maxMemoryAllocationSize impose that limitation instead, which as of this writing never exceeds
     * UINT32_MAX (also rounded down to the pipe interleave so the maximum valid size still makes it
     * possible to provide the padding for UAV alignment base offsetting).
+    *
+    * Note that this is sufficient for element index clamping for robust buffer access with
+    * `buffer_uav_validated_as_image`, there's no need to set a lower limit to handle that UAVs with
+    * large element sizes have a base address granularity larger than the pipe interleave. That's
+    * because shaders add the sub-granularity base offset passed in elements, not in bytes. So, with
+    * 256-byte pipe interleave, the maximum sub-granularity base offset will be 255 - for 1 byte per
+    * element. With 8 or 16 bytes per element, the base granularity is 512 or 1024 bytes
+    * respectively (due to the requirement that the pitch must be aligned to 64 elements for
+    * LINEAR_ALIGNED), however, because the sub-granularity base offset is passed in elements, it
+    * will not exceed 63.
     */
    properties_out->maxTexelBufferElements = max_uav_range_bytes;
 
    properties_out->maxUniformBufferRange = TERAKAN_KCACHE_HW_MAX_BUFFER_SIZE_BYTES;
 
+   /* Storage buffer UAVs have 32-bit elements, and thus the pipe interleave divided by the element
+    * size is at least 64, so the pitch never needs to be overaligned, therefore no need to handle
+    * `buffer_uav_validated_as_image`.
+    */
    properties_out->maxStorageBufferRange = max_uav_range_bytes;
 
    properties_out->maxPushConstantsSize = TERAKAN_PUSH_CONSTANTS_APP_SIZE_BYTES;

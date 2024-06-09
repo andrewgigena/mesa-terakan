@@ -448,12 +448,14 @@ visit_intrinsic(nir_intrinsic_instr *instr, struct divergence_state *state)
    case nir_intrinsic_ldc_nv:
    case nir_intrinsic_ldcx_nv:
    case nir_intrinsic_load_buffer_resource_r600:
+   case nir_intrinsic_load_texture_resource_r600:
       is_divergent = (instr->src[0].ssa->divergent && (nir_intrinsic_access(instr) & ACCESS_NON_UNIFORM)) ||
                      instr->src[1].ssa->divergent;
       break;
 
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_load_ssbo_ir3:
+   case nir_intrinsic_load_buffer_resource_r600:
       is_divergent = (instr->src[0].ssa->divergent && (nir_intrinsic_access(instr) & ACCESS_NON_UNIFORM)) ||
                      instr->src[1].ssa->divergent ||
                      load_may_tear(state->shader, instr);
