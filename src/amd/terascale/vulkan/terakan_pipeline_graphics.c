@@ -1150,6 +1150,7 @@ terakan_pipeline_graphics_create(struct terakan_device * const device,
 
       terakan_shader_lower_and_optimize_post_link(nir, pipeline_layout, shader->resources_needed,
                                                   &shader->samplers_needed,
+                                                  shader->uavs_for_mutable_resources_needed,
                                                   &shader->fs.fragment_data_uncompacted_locations);
 
       /* TODO(Triang3l): Construct the shader key from the NIR and, when available, the pipeline

@@ -32,6 +32,7 @@
 
 #include "gallium/drivers/r600/r600_shader_common.h"
 #include "util/bitset.h"
+#include "util/macros.h"
 #include "nir.h"
 
 #include <stddef.h>
@@ -88,6 +89,14 @@ struct terakan_shader_impl {
    BITSET_DECLARE(resources_needed, TERAKAN_RESOURCE_HW_COUNT_PIXEL_COMPUTE);
    uint32_t samplers_needed;
 
+   /* TERAKAN_RESOURCE_RANGE_MUTABLE_MAX_COUNT_PIXEL bits are valid in fragment shaders,
+    * TERAKAN_RESOURCE_RANGE_MUTABLE_MAX_COUNT_NON_PIXEL bits are valid in compute shaders.
+    * Padded to BITSET_WORD with zero bits, can be used in memcmp.
+    */
+   BITSET_DECLARE(uavs_for_mutable_resources_needed,
+                  MAX2(TERAKAN_RESOURCE_RANGE_MUTABLE_MAX_COUNT_PIXEL,
+                       TERAKAN_RESOURCE_RANGE_MUTABLE_MAX_COUNT_NON_PIXEL));
+
    struct {
       BITSET_DECLARE(vertex_attributes_needed, TERAKAN_VERTEX_INPUT_MAX_ATTRIBUTES);
    } vs;
@@ -113,6 +122,7 @@ nir_shader * terakan_shader_spirv_to_nir(struct terakan_device * device, size_t 
 void terakan_shader_lower_and_optimize_post_link(
    nir_shader * nir, struct terakan_pipeline_layout const * pipeline_layout,
    BITSET_WORD * resources_needed, uint32_t * samplers_needed,
+   BITSET_WORD * uavs_for_mutable_resources_needed,
    uint8_t * fragment_data_uncompacted_locations_out);
 
 void terakan_shader_impl_finish(struct terakan_shader_impl * shader,

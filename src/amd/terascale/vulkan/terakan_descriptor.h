@@ -148,6 +148,9 @@ extern "C" {
  * buffers of UAVs (11 with the limitations of maxFragmentCombinedOutputResources's interaction with
  * dual-source blending) there, and give the rest of that range to an extension of the mutable
  * resource type descriptor space for use as input attachments (at least 4 are mandatory in Vulkan).
+ * To reduce hardware binding changes when switching between fragment shaders that have the same UAV
+ * bindings, but different color output counts, not offsetting immediate buffer resource indices by
+ * the color output count unlike UAV indices themselves.
  */
 #define TERAKAN_RESOURCE_RANGE_UAV_IMMEDIATE_BASE_PIXEL                                            \
    (TERAKAN_RESOURCE_HW_COUNT_PIXEL_COMPUTE - TERAKAN_COLOR_UAV_COUNT_PIXEL)
@@ -202,9 +205,13 @@ struct terakan_color_descriptor {
     * the LINEAR_ALIGNED array mode (not LINEAR_GENERAL), for smaller alignments required by
     * Direct3D 11 (and even if disregarding Direct3D 11, by Vulkan itself as well - at most 256,
     * while the pipe interleave can potentially be 512 bytes), an offset needs to be added to
-    * element indices in shaders. In buffer views within the driver, it's stored in SLICE_START in
-    * elements (not in bytes unlike for LINEAR_GENERAL in the hardware), and must be zeroed before
-    * being passed to the actual CB_COLOR registers.
+    * element indices in shaders. In buffer views within the driver, the `view` field is repurposed
+    * for storing that offset in elements (since SLICE_START and SLICE_MAX must always be 0 for
+    * LINEAR_ALIGNED buffers, and taking inspiration from how the hardware accepts the base address
+    * for LINEAR_GENERAL), and `view` must be zeroed before being passed to the actual CB_COLOR
+    * registers. This offset also handles the device memory BO size padding granularity used to
+    * handle `buffer_uav_validated_as_image`, in which case it may be nonzero even if the
+    * application-provided base address is aligned to the pipe interleave.
     */
    uint32_t view;
    /* In image views, the INFO register is for a color attachment. */
@@ -214,23 +221,28 @@ struct terakan_color_descriptor {
    uint32_t dim;
 };
 
-void terakan_color_descriptor_calculate_buffer_base_pitch_dim_offset(
+struct terakan_physical_device;
+
+unsigned terakan_color_descriptor_buffer_uav_base_granularity_log2(
+   unsigned bytes_per_element, struct terakan_physical_device const * physical_device);
+
+void terakan_color_descriptor_calculate_buffer_base_pitch_slice_dim_offset(
    struct terakan_color_descriptor * descriptor, uint64_t va, VkDeviceSize elements,
-   unsigned bytes_per_element, unsigned tile_pipe_interleave_bytes_log2,
-   uint32_t * alignment_offset_elements_out);
+   unsigned bytes_per_element, struct terakan_physical_device const * physical_device,
+   uint32_t * base_granularity_offset_elements_out);
 
 static inline void
-terakan_color_descriptor_calculate_buffer_base_pitch_view_dim(
+terakan_color_descriptor_calculate_buffer_base_pitch_slice_view_dim(
    struct terakan_color_descriptor * const descriptor, uint64_t const va,
    VkDeviceSize const elements, unsigned const bytes_per_element,
-   unsigned const tile_pipe_interleave_bytes_log2)
+   struct terakan_physical_device const * const physical_device)
 {
-   uint32_t alignment_offset_elements;
-   terakan_color_descriptor_calculate_buffer_base_pitch_dim_offset(
-      descriptor, va, elements, bytes_per_element, tile_pipe_interleave_bytes_log2,
-      &alignment_offset_elements);
+   uint32_t base_granularity_offset_elements;
+   terakan_color_descriptor_calculate_buffer_base_pitch_slice_dim_offset(
+      descriptor, va, elements, bytes_per_element, physical_device,
+      &base_granularity_offset_elements);
    /* Used by the driver, must be zeroed before being passed to the hardware. */
-   descriptor->view = S_028C6C_SLICE_START(alignment_offset_elements);
+   descriptor->view = base_granularity_offset_elements;
 }
 
 static inline void
@@ -254,6 +266,13 @@ terakan_color_descriptor_image_view_to_storage_image(
       S_028C70_BLEND_BYPASS(1) | S_028C70_SOURCE_FORMAT(V_028C70_EXPORT_4C_32BPC) | S_028C70_RAT(1);
    descriptor->attrib &= C_028C74_FORCE_DST_ALPHA_1;
 }
+
+struct terakan_device;
+
+/* The BO is `device->uav_immediate_bo`. */
+void terakan_color_descriptor_info_to_uav_immediate_resource(struct terakan_device const * device,
+                                                             uint32_t color_info,
+                                                             uint32_t resource_out[8]);
 
 /* Additional hardware CB_COLOR[0-7] registers. */
 struct terakan_color_meta_descriptor {
@@ -304,20 +323,26 @@ terakan_descriptor_type_has_sampler(VkDescriptorType const descriptor_type)
 static inline bool
 terakan_descriptor_type_has_uav(VkDescriptorType const descriptor_type)
 {
-   return descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ||
-          descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER ||
-          descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
-          descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+   if (descriptor_type != VK_DESCRIPTOR_TYPE_STORAGE_IMAGE &&
+       descriptor_type != VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER &&
+       descriptor_type != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER &&
+       descriptor_type != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
+      return false;
+   }
+   /* For read-only bindings of the given types, and for size queries, UAVs always have a
+    * corresponding resource.
+    */
+   assert(terakan_descriptor_type_has_resource(descriptor_type));
+   return true;
 }
 
 bool terakan_descriptor_create_for_uniform_buffer(struct terakan_bo const * bo, uint64_t va,
                                                   VkDeviceSize range, uint32_t resource_out[8]);
 
-bool terakan_descriptor_create_for_storage_buffer(struct terakan_bo const * bo, uint64_t va,
-                                                  VkDeviceSize range,
-                                                  unsigned tile_pipe_interleave_bytes_log2,
-                                                  uint32_t resource_out[8],
-                                                  struct terakan_color_descriptor * color_out);
+bool terakan_descriptor_create_for_storage_buffer(
+   struct terakan_bo const * bo, uint64_t va, VkDeviceSize range,
+   struct terakan_physical_device const * physical_device, uint32_t resource_out[8],
+   struct terakan_color_descriptor * color_out);
 
 #ifdef __cplusplus
 }

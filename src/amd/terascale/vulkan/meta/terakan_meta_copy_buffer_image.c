@@ -30,6 +30,7 @@
 #include "terakan_entrypoints.h"
 #include "terakan_format.h"
 #include "terakan_image.h"
+#include "terakan_physical_device.h"
 
 #include "gallium/drivers/r600/eg_sq.h"
 #include "gallium/drivers/r600/evergreend.h"
@@ -622,159 +623,156 @@ static uint32_t const terakan_meta_copy_image_to_buffer_ps_r9xx[] = {
       S_SQ_ALU_WORD1_OP2_ALU_INST(EG_V_SQ_ALU_WORD1_OP2_SQ_OP2_INST_ADD_INT),
 };
 
-struct terakan_meta_shader const terakan_meta_copy_buffer_to_image_ps =
-   {
-      .r8xx =
-         {
-            .program = terakan_meta_copy_buffer_to_image_ps_r8xx,
-            .program_size_bytes = sizeof(terakan_meta_copy_buffer_to_image_ps_r8xx),
-            .static_registers =
-               {
-                  .sq_pgm_resources =
-                     {
-                        S_028844_NUM_GPRS(1) | TERAKAN_META_SQ_PGM_RESOURCES_COMMON,
-                        TERAKAN_META_SQ_PGM_RESOURCES_2_COMMON,
-                     },
-                  .stage =
-                     {
-                        .ps =
-                           {
-                              .sq_pgm_exports_ps = S_02884C_EXPORT_COLORS(1),
-                              .spi_ps_in_control =
-                                 {
-                                    S_0286CC_NUM_INTERP(1) | S_0286CC_LINEAR_GRADIENT_ENA(1),
-                                    S_0286D0_FIXED_PT_POSITION_ENA(1) |
-                                       S_0286D0_FIXED_PT_POSITION_ADDR(0),
-                                 },
-                              .spi_baryc_cntl = S_0286E0_LINEAR_CENTER_ENA(1),
-                              .cb_shader_mask = 0xF,
-                           },
-                     },
-               },
-         },
-      .r9xx =
-         {
-            .program = terakan_meta_copy_buffer_to_image_ps_r9xx,
-            .program_size_bytes = sizeof(terakan_meta_copy_buffer_to_image_ps_r9xx),
-            .static_registers =
-               {
-                  .sq_pgm_resources =
-                     {
-                        S_028844_NUM_GPRS(1) | TERAKAN_META_SQ_PGM_RESOURCES_COMMON,
-                        TERAKAN_META_SQ_PGM_RESOURCES_2_COMMON,
-                     },
-                  .stage =
-                     {
-                        .ps =
-                           {
-                              .sq_pgm_exports_ps = S_02884C_EXPORT_COLORS(1),
-                              .spi_ps_in_control =
-                                 {
-                                    S_0286CC_NUM_INTERP(1) | S_0286CC_LINEAR_GRADIENT_ENA(1),
-                                    S_0286D0_FIXED_PT_POSITION_ENA(1) |
-                                       S_0286D0_FIXED_PT_POSITION_ADDR(0),
-                                 },
-                              .spi_baryc_cntl = S_0286E0_LINEAR_CENTER_ENA(1),
-                              .cb_shader_mask = 0xF,
-                           },
-                     },
-               },
-         },
-      .kcache_needed = (uint16_t)1 << TERAKAN_KCACHE_BUFFER_PUSH_CONSTANTS,
-      .resources_needed =
-         {
-            [BITSET_BITWORD(TERAKAN_RESOURCE_RANGE_SHADER_CONSTANT_ARRAYS_OR_META)] =
-               BITSET_BIT(TERAKAN_RESOURCE_RANGE_SHADER_CONSTANT_ARRAYS_OR_META),
-         },
-      .stage =
-         {
-            .ps =
-               {
-                  .db_shader_control = TERAKAN_META_DB_SHADER_CONTROL_DEFAULT,
-               },
-         },
+struct terakan_meta_shader const terakan_meta_copy_buffer_to_image_ps = {
+   .r8xx =
+      {
+         .program = terakan_meta_copy_buffer_to_image_ps_r8xx,
+         .program_size_bytes = sizeof(terakan_meta_copy_buffer_to_image_ps_r8xx),
+         .static_registers =
+            {
+               .sq_pgm_resources =
+                  {
+                     S_028844_NUM_GPRS(1) | TERAKAN_META_SQ_PGM_RESOURCES_COMMON,
+                     TERAKAN_META_SQ_PGM_RESOURCES_2_COMMON,
+                  },
+               .stage =
+                  {
+                     .ps =
+                        {
+                           .sq_pgm_exports_ps = S_02884C_EXPORT_COLORS(1),
+                           .spi_ps_in_control =
+                              {
+                                 S_0286CC_NUM_INTERP(1) | S_0286CC_LINEAR_GRADIENT_ENA(1),
+                                 S_0286D0_FIXED_PT_POSITION_ENA(1) |
+                                    S_0286D0_FIXED_PT_POSITION_ADDR(0),
+                              },
+                           .spi_baryc_cntl = S_0286E0_LINEAR_CENTER_ENA(1),
+                           .cb_shader_mask = 0xF,
+                        },
+                  },
+            },
+      },
+   .r9xx =
+      {
+         .program = terakan_meta_copy_buffer_to_image_ps_r9xx,
+         .program_size_bytes = sizeof(terakan_meta_copy_buffer_to_image_ps_r9xx),
+         .static_registers =
+            {
+               .sq_pgm_resources =
+                  {
+                     S_028844_NUM_GPRS(1) | TERAKAN_META_SQ_PGM_RESOURCES_COMMON,
+                     TERAKAN_META_SQ_PGM_RESOURCES_2_COMMON,
+                  },
+               .stage =
+                  {
+                     .ps =
+                        {
+                           .sq_pgm_exports_ps = S_02884C_EXPORT_COLORS(1),
+                           .spi_ps_in_control =
+                              {
+                                 S_0286CC_NUM_INTERP(1) | S_0286CC_LINEAR_GRADIENT_ENA(1),
+                                 S_0286D0_FIXED_PT_POSITION_ENA(1) |
+                                    S_0286D0_FIXED_PT_POSITION_ADDR(0),
+                              },
+                           .spi_baryc_cntl = S_0286E0_LINEAR_CENTER_ENA(1),
+                           .cb_shader_mask = 0xF,
+                        },
+                  },
+            },
+      },
+   .kcache_needed = (uint16_t)1 << TERAKAN_KCACHE_BUFFER_PUSH_CONSTANTS,
+   .resources_needed =
+      {
+         [BITSET_BITWORD(TERAKAN_RESOURCE_RANGE_SHADER_CONSTANT_ARRAYS_OR_META)] =
+            BITSET_BIT(TERAKAN_RESOURCE_RANGE_SHADER_CONSTANT_ARRAYS_OR_META),
+      },
+   .stage =
+      {
+         .ps =
+            {
+               .db_shader_control = TERAKAN_META_DB_SHADER_CONTROL_DEFAULT,
+            },
+      },
 };
 
-struct terakan_meta_shader const
-   terakan_meta_copy_image_to_buffer_ps =
+struct terakan_meta_shader const terakan_meta_copy_image_to_buffer_ps = {
+   .r8xx =
       {
-         .r8xx =
+         .program = terakan_meta_copy_image_to_buffer_ps_r8xx,
+         .program_size_bytes = sizeof(terakan_meta_copy_image_to_buffer_ps_r8xx),
+         .static_registers =
             {
-               .program = terakan_meta_copy_image_to_buffer_ps_r8xx,
-               .program_size_bytes = sizeof(terakan_meta_copy_image_to_buffer_ps_r8xx),
-               .static_registers =
+               .sq_pgm_resources =
                   {
-                     .sq_pgm_resources =
+                     S_028844_NUM_GPRS(2) | TERAKAN_META_SQ_PGM_RESOURCES_COMMON,
+                     TERAKAN_META_SQ_PGM_RESOURCES_2_COMMON,
+                  },
+               .stage =
+                  {
+                     .ps =
                         {
-                           S_028844_NUM_GPRS(2) | TERAKAN_META_SQ_PGM_RESOURCES_COMMON,
-                           TERAKAN_META_SQ_PGM_RESOURCES_2_COMMON,
-                        },
-                     .stage =
-                        {
-                           .ps =
+                           .sq_pgm_exports_ps = S_02884C_EXPORT_COLORS(1),
+                           .spi_ps_input_cntl =
                               {
-                                 .sq_pgm_exports_ps = S_02884C_EXPORT_COLORS(1),
-                                 .spi_ps_input_cntl =
-                                    {
-                                       [0] = S_028644_FLAT_SHADE(1),
-                                    },
-                                 .spi_ps_in_control =
-                                    {
-                                       S_0286CC_NUM_INTERP(1) | S_0286CC_LINEAR_GRADIENT_ENA(1),
-                                       S_0286D0_FIXED_PT_POSITION_ENA(1) |
-                                          S_0286D0_FIXED_PT_POSITION_ADDR(0),
-                                    },
-                                 .spi_baryc_cntl = S_0286E0_LINEAR_CENTER_ENA(1),
-                                 .cb_shader_mask = 0xF,
+                                 [0] = S_028644_FLAT_SHADE(1),
                               },
-                        },
-                  },
-            },
-         .r9xx =
-            {
-               .program = terakan_meta_copy_image_to_buffer_ps_r9xx,
-               .program_size_bytes = sizeof(terakan_meta_copy_image_to_buffer_ps_r9xx),
-               .static_registers =
-                  {
-                     .sq_pgm_resources =
-                        {
-                           S_028844_NUM_GPRS(2) | TERAKAN_META_SQ_PGM_RESOURCES_COMMON,
-                           TERAKAN_META_SQ_PGM_RESOURCES_2_COMMON,
-                        },
-                     .stage =
-                        {
-                           .ps =
+                           .spi_ps_in_control =
                               {
-                                 .sq_pgm_exports_ps = S_02884C_EXPORT_COLORS(1),
-                                 .spi_ps_input_cntl =
-                                    {
-                                       [0] = S_028644_FLAT_SHADE(1),
-                                    },
-                                 .spi_ps_in_control =
-                                    {
-                                       S_0286CC_NUM_INTERP(1) | S_0286CC_LINEAR_GRADIENT_ENA(1),
-                                       S_0286D0_FIXED_PT_POSITION_ENA(1) |
-                                          S_0286D0_FIXED_PT_POSITION_ADDR(0),
-                                    },
-                                 .spi_baryc_cntl = S_0286E0_LINEAR_CENTER_ENA(1),
-                                 .cb_shader_mask = 0xF,
+                                 S_0286CC_NUM_INTERP(1) | S_0286CC_LINEAR_GRADIENT_ENA(1),
+                                 S_0286D0_FIXED_PT_POSITION_ENA(1) |
+                                    S_0286D0_FIXED_PT_POSITION_ADDR(0),
                               },
+                           .spi_baryc_cntl = S_0286E0_LINEAR_CENTER_ENA(1),
+                           .cb_shader_mask = 0xF,
                         },
                   },
             },
-         .kcache_needed = (uint16_t)1 << TERAKAN_KCACHE_BUFFER_PUSH_CONSTANTS,
-         .resources_needed =
+      },
+   .r9xx =
+      {
+         .program = terakan_meta_copy_image_to_buffer_ps_r9xx,
+         .program_size_bytes = sizeof(terakan_meta_copy_image_to_buffer_ps_r9xx),
+         .static_registers =
             {
-               [BITSET_BITWORD(TERAKAN_RESOURCE_RANGE_SHADER_CONSTANT_ARRAYS_OR_META)] =
-                  BITSET_BIT(TERAKAN_RESOURCE_RANGE_SHADER_CONSTANT_ARRAYS_OR_META),
-            },
-         .stage =
-            {
-               .ps =
+               .sq_pgm_resources =
                   {
-                     .db_shader_control = TERAKAN_META_DB_SHADER_CONTROL_PS_MEMORY_EXPORT,
+                     S_028844_NUM_GPRS(2) | TERAKAN_META_SQ_PGM_RESOURCES_COMMON,
+                     TERAKAN_META_SQ_PGM_RESOURCES_2_COMMON,
+                  },
+               .stage =
+                  {
+                     .ps =
+                        {
+                           .sq_pgm_exports_ps = S_02884C_EXPORT_COLORS(1),
+                           .spi_ps_input_cntl =
+                              {
+                                 [0] = S_028644_FLAT_SHADE(1),
+                              },
+                           .spi_ps_in_control =
+                              {
+                                 S_0286CC_NUM_INTERP(1) | S_0286CC_LINEAR_GRADIENT_ENA(1),
+                                 S_0286D0_FIXED_PT_POSITION_ENA(1) |
+                                    S_0286D0_FIXED_PT_POSITION_ADDR(0),
+                              },
+                           .spi_baryc_cntl = S_0286E0_LINEAR_CENTER_ENA(1),
+                           .cb_shader_mask = 0xF,
+                        },
                   },
             },
+      },
+   .kcache_needed = (uint16_t)1 << TERAKAN_KCACHE_BUFFER_PUSH_CONSTANTS,
+   .resources_needed =
+      {
+         [BITSET_BITWORD(TERAKAN_RESOURCE_RANGE_SHADER_CONSTANT_ARRAYS_OR_META)] =
+            BITSET_BIT(TERAKAN_RESOURCE_RANGE_SHADER_CONSTANT_ARRAYS_OR_META),
+      },
+   .stage =
+      {
+         .ps =
+            {
+               .db_shader_control = TERAKAN_META_DB_SHADER_CONTROL_PS_MEMORY_EXPORT,
+            },
+      },
 };
 
 static void
@@ -996,9 +994,8 @@ terakan_CmdCopyImageToBuffer2(VkCommandBuffer const commandBuffer,
       .attrib = S_028C74_NON_DISP_TILING_ORDER(1),
    };
 
-   uint32_t const tile_pipe_interleave_bytes_log2 =
-      terakan_gfx_command_writer_physical_device(command_writer)
-         ->tiling_info.pipe_interleave_bytes_log2;
+   struct terakan_physical_device const * const physical_device =
+      terakan_gfx_command_writer_physical_device(command_writer);
 
    command_writer->post_color_image_copy_write_barrier_actions |=
       TERAKAN_BARRIER_ACTION_FLUSH_INV_CB_UAV | TERAKAN_BARRIER_ACTION_PARTIAL_FLUSH_CP_THROUGH_PS;
@@ -1009,7 +1006,7 @@ terakan_CmdCopyImageToBuffer2(VkCommandBuffer const commandBuffer,
    terakan_meta_set_vs(command_writer, TERAKAN_META_SHADER_POSITION_FROM_INDEX_VS);
    terakan_meta_set_ps(command_writer, TERAKAN_META_SHADER_COPY_IMAGE_TO_BUFFER_PS, true);
 
-   terakan_meta_begin_cb(command_writer, V_028808_CB_NORMAL, 0xF, 0b0);
+   terakan_meta_begin_cb(command_writer, V_028808_CB_DISABLE, 0xF, 0b0);
 
    command_writer->push_constants_state.up_to_date_push_constants_bound_to_stages &=
       ~VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -1036,16 +1033,15 @@ terakan_CmdCopyImageToBuffer2(VkCommandBuffer const commandBuffer,
       unsigned const region_bytes_per_block =
          image->surface.aspects[image_descriptor_create_info.image_aspect_index].bytes_per_block;
 
-      uint32_t buffer_uav_alignment_offset_elements;
-      terakan_color_descriptor_calculate_buffer_base_pitch_dim_offset(
+      uint32_t buffer_uav_base_granularity_offset_elements;
+      terakan_color_descriptor_calculate_buffer_base_pitch_slice_dim_offset(
          &buffer_uav, buffer->va + region->bufferOffset,
          (image_descriptor_create_info.layer_count - 1) * buffer_z_pitch +
             (rect.extent.height - 1) * buffer_y_pitch + rect.extent.width,
-         region_bytes_per_block, tile_pipe_interleave_bytes_log2,
-         &buffer_uav_alignment_offset_elements);
+         region_bytes_per_block, physical_device, &buffer_uav_base_granularity_offset_elements);
 
       int32_t const image_offset_x_minus_buffer_offset =
-         rect.offset.x - (int32_t)buffer_uav_alignment_offset_elements;
+         rect.offset.x - (int32_t)buffer_uav_base_granularity_offset_elements;
 
       if (constants[TERAKAN_META_COPY_BUFFER_IMAGE_CONST_IMAGE_OFFSET_X_MINUS_BUFFER_OFFSET] !=
              (uint32_t)image_offset_x_minus_buffer_offset ||
