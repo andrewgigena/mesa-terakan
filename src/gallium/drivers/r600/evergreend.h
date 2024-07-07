@@ -200,6 +200,21 @@
 #define PKT3_SAC_SRC_SEL_MEM  0x3
 
 /* Registers */
+
+#define R_00802C_GRBM_GFX_INDEX                      0x00802C
+#define   S_00802C_INSTANCE_INDEX(x)                   (((unsigned)(x) & 0xFF) << 0)
+#define   G_00802C_INSTANCE_INDEX(x)                   (((x) >> 0) & 0xFF)
+#define   C_00802C_INSTANCE_INDEX                      0xFFFFFF00
+#define   S_00802C_SE_INDEX(x)                         (((unsigned)(x) & 0xFF) << 16)
+#define   G_00802C_SE_INDEX(x)                         (((x) >> 16) & 0xFF)
+#define   C_00802C_SE_INDEX                            0xFF00FFFF
+#define   S_00802C_INSTANCE_BROADCAST_WRITES(x)        (((unsigned)(x) & 0x1) << 30)
+#define   G_00802C_INSTANCE_BROADCAST_WRITES(x)        (((x) >> 30) & 0x1)
+#define   C_00802C_INSTANCE_BROADCAST_WRITES           0xBFFFFFFF
+#define   S_00802C_SE_BROADCAST_WRITES(x)              (((unsigned)(x) & 0x1) << 31)
+#define   G_00802C_SE_BROADCAST_WRITES(x)              (((x) >> 31) & 0x1)
+#define   C_00802C_SE_BROADCAST_WRITES                 0x7FFFFFFF
+
 #define R_0084FC_CP_STRMOUT_CNTL		     0x0084FC
 #define   S_0084FC_OFFSET_UPDATE_DONE(x)		(((unsigned)(x) & 0x1) << 0)
 #define R_028B94_VGT_STRMOUT_CONFIG                                     0x028B94
