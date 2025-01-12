@@ -667,6 +667,10 @@ RatInstr::emit_uav_instr(nir_intrinsic_instr *intrin, Shader& shader)
       1,
       value_component_mask,
       0);
+   uav_instr->set_ack();
+   if (op_returns) {
+      uav_instr->set_instr_flag(Instr::ack_rat_return_write);
+   }
    if (nir_intrinsic_access(intrin) & ACCESS_INCLUDE_HELPERS) {
       uav_instr->set_instr_flag(Instr::helper);
    }
@@ -674,8 +678,6 @@ RatInstr::emit_uav_instr(nir_intrinsic_instr *intrin, Shader& shader)
 
    if (op_returns) {
       assert(intrin->def.num_components <= 4);
-
-      uav_instr->set_ack();
 
       auto fetch_instr = new FetchInstr(
          vc_fetch,

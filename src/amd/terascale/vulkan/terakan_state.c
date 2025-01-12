@@ -286,6 +286,21 @@ terakan_state_draw_apply_sq_pgm_ps(struct terakan_gfx_command_writer * const com
    terakan_hw_state_draw_written(&command_writer->hw_state_draw,
                                  TERAKAN_HW_STATE_DRAW_INDEX_SQ_PGM_PS, fs_static_modified);
 
+   if (fs != NULL) {
+      struct terakan_physical_device_chip_family_info const * const chip_family_info =
+         &terakan_gfx_command_writer_physical_device(command_writer)->chip_family_info;
+      /* TODO(Triang3l): Proper ring size calculation. */
+      terakan_hw_state_draw_set_sq_ring(
+         command_writer, TERAKAN_SHADER_RING_INDEX_PSTMP, fs->scratch_item_size_dwords,
+         (uint32_t)(
+            (((sizeof(uint32_t) * (uint64_t)fs->scratch_item_size_dwords *
+               chip_family_info->sq_max_threads) <<
+                  (6 + chip_family_info->max_quad_pipes_log2)) + 0xFF) >>
+               8));
+   } else {
+      terakan_hw_state_draw_set_sq_ring(command_writer, TERAKAN_SHADER_RING_INDEX_PSTMP, 0, 0);
+   }
+
    terakan_hw_state_draw_set_sq_constants_needed_by_fs(&command_writer->hw_state_draw, 0,
                                                        fs != NULL ? fs->resources_needed : NULL,
                                                        fs != NULL ? fs->samplers_needed : 0b0);
