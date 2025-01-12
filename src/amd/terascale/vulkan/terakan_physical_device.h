@@ -64,6 +64,7 @@ struct terakan_physical_device_chip_family_info {
    bool has_vertex_cache;
    /* 1 shader engine if false, up to 2 shader engines if true. */
    bool two_shader_engines_max;
+   unsigned max_quad_pipes_log2;
    uint32_t sq_max_threads;
    uint32_t sq_ps_threads_r8xx;
    uint32_t sq_max_stack_entries;

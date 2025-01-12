@@ -64,6 +64,12 @@ terakan_device_finish(struct terakan_device * const device)
 
    terakan_bo_free(device->gfx_discard_bo, NULL);
 
+   for (size_t reference_placeholder_bo_index = 0;
+        reference_placeholder_bo_index < TERAKAN_QUEUE_BO_REFERENCE_PLACEHOLDER_INDEX_COUNT;
+        ++reference_placeholder_bo_index) {
+      terakan_bo_free(device->reference_placeholder_bos[reference_placeholder_bo_index], NULL);
+   }
+
    vk_device_finish(&device->vk);
 }
 
@@ -127,6 +133,22 @@ terakan_device_init(struct terakan_device * const device,
 
    device->last_bo_creation_number = 0;
 
+   size_t reference_placeholder_bos_created;
+   for (reference_placeholder_bos_created = 0;
+        reference_placeholder_bos_created < TERAKAN_QUEUE_BO_REFERENCE_PLACEHOLDER_INDEX_COUNT;
+        ++reference_placeholder_bos_created) {
+      /* 0x100 for base address alignment for 8-shifted addresses. */
+      result = device->winsys_fn->bo->allocate_device_memory(
+         device, 0x100, 0x100, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0, NULL,
+         VK_SYSTEM_ALLOCATION_SCOPE_DEVICE,
+         &device->reference_placeholder_bos[reference_placeholder_bos_created]);
+      if (result != VK_SUCCESS) {
+         result = vk_errorf(physical_device->vk.instance, result,
+                            "Failed to create allocation reference placeholder allocations");
+         goto fail_reference_placeholder_bos;
+      }
+   }
+
    result = device->winsys_fn->bo->allocate_device_memory(
       device, MAX2(sizeof(uint32_t), TERAKAN_CP_DMA_COPY_OPTIMAL_ALIGNMENT * 2),
       MAX2(sizeof(uint32_t), TERAKAN_CP_DMA_COPY_OPTIMAL_ALIGNMENT),
@@ -136,7 +158,7 @@ terakan_device_init(struct terakan_device * const device,
       result =
          vk_errorf(physical_device->vk.instance, result,
                    "Failed to allocate memory for temporary data to discard on the graphics queue");
-      goto fail_device;
+      goto fail_reference_placeholder_bos;
    }
 
    uint32_t uav_immediate_bo_bytes_shr8 = 0;
@@ -294,7 +316,10 @@ fail_uav_immediate_bo:
    terakan_bo_free(device->uav_immediate_bo, NULL);
 fail_gfx_discard_bo:
    terakan_bo_free(device->gfx_discard_bo, NULL);
-fail_device:
+fail_reference_placeholder_bos:
+   while (reference_placeholder_bos_created > 0) {
+      terakan_bo_free(device->reference_placeholder_bos[--reference_placeholder_bos_created], NULL);
+   }
    vk_device_finish(&device->vk);
    return result;
 }

@@ -403,6 +403,11 @@ terakan_command_buffer_create(struct vk_command_pool * const command_pool,
    list_inithead(&command_buffer->push_buffers);
    command_buffer->current_push_buffer_used_bytes = TERAKAN_PUSH_BUFFER_SIZE_BYTES;
 
+   for (size_t shader_ring_index = 0; shader_ring_index < TERAKAN_SHADER_RING_INDEX_COUNT;
+        ++shader_ring_index) {
+      command_buffer->shader_ring_bytes_needed_for_se_shr8[shader_ring_index] = 0;
+   }
+
    list_inithead(&command_buffer->indirect_buffers);
 
    command_buffer->command_writer.gfx = NULL;
@@ -957,6 +962,14 @@ terakan_gfx_command_writer_new_indirect_buffer(
                                      terakan_gfx_command_writer_device(command_writer)
                                         ->command_buffer_submission_size_gfx.bo_references);
 
+   command_writer->indirect_buffer->shader_rings_bo_placeholder_reference = UINT32_MAX;
+   for (size_t shader_ring_index = 0; shader_ring_index < TERAKAN_SHADER_RING_INDEX_COUNT;
+        ++shader_ring_index) {
+      command_writer->indirect_buffer->shader_rings[shader_ring_index]
+         .set_base_argument_offsets_dwords[0] =
+         UINT32_MAX;
+   }
+
    command_writer->is_beginning_indirect_buffer = true;
 
    terakan_gfx_command_writer_emit_preamble(command_writer);
@@ -1092,7 +1105,7 @@ terakan_gfx_command_writer_emit_with_bo(struct terakan_gfx_command_writer * cons
    return indirect_buffer_allocation;
 }
 
-void
+uint32_t
 terakan_gfx_command_writer_add_relocation(struct terakan_gfx_command_writer * const command_writer,
                                           uint32_t ** const indirect_buffer_append_ptr,
                                           uint32_t const * const address_in_packet,
@@ -1105,7 +1118,7 @@ terakan_gfx_command_writer_add_relocation(struct terakan_gfx_command_writer * co
          ->submission_info_gfx.base.relocation_type;
 
    if (relocation_type == TERAKAN_QUEUE_RELOCATION_TYPE_NONE) {
-      return;
+      return 0;
    }
 
 #ifndef NDEBUG
@@ -1115,18 +1128,22 @@ terakan_gfx_command_writer_add_relocation(struct terakan_gfx_command_writer * co
 #endif
 
    switch (relocation_type) {
-   case TERAKAN_QUEUE_RELOCATION_TYPE_DRM_NOP:
+   case TERAKAN_QUEUE_RELOCATION_TYPE_DRM_NOP: {
       *((*indirect_buffer_append_ptr)++) = PKT3(PKT3_NOP, 0, 0);
+      uint32_t const relocation_handle =
+         (uint32_t)(*indirect_buffer_append_ptr - command_writer->indirect_buffer->indirect_buffer);
       /* DRM Radeon accepts BO reference offsets in dwords, so multiplying by
        * `sizeof(struct drm_radeon_cs_reloc) / sizeof(__u32)`.
        */
       *((*indirect_buffer_append_ptr)++) = 4 * bo_reference;
-      break;
+      return relocation_handle;
+   } break;
 
    case TERAKAN_QUEUE_RELOCATION_TYPE_WDDM_PATCH: {
+      uint32_t const relocation_handle = command_writer->indirect_buffer->relocation_count++;
       struct terakan_queue_relocation_wddm_patch * const patch =
          &((struct terakan_queue_relocation_wddm_patch *)command_writer->indirect_buffer
-              ->relocations)[command_writer->indirect_buffer->relocation_count++];
+              ->relocations)[relocation_handle];
       /* + 1 because a hAllocation = 0 allocation list entry is prepended when submitting. */
       patch->allocation_index = 1 + bo_reference;
       patch->slot_id = (uint32_t)wddm_patch_ids;
@@ -1136,6 +1153,7 @@ terakan_gfx_command_writer_add_relocation(struct terakan_gfx_command_writer * co
          sizeof(uint32_t) *
          (uint32_t)(address_in_packet - command_writer->indirect_buffer->indirect_buffer);
       patch->split_offset = 0;
+      return relocation_handle;
    } break;
 
    default:
@@ -1266,6 +1284,12 @@ terakan_BeginCommandBuffer(VkCommandBuffer const commandBuffer,
     * simplicity of submitting.
     */
    uint32_t const invalidate_caches_packets[] = {
+      PKT3(PKT3_SET_CONTEXT_REG, 1, 0),
+      TERAKAN_CONTEXT_REG_OFFSET(R_028354_SX_SURFACE_SYNC),
+      /* Scratch buffers. */
+      /* TODO(Triang3l): Everything else once implemented: stream output, geometry ring buffers. */
+      S_028354_SURFACE_SYNC_MASK(0b10000),
+
       PKT3(PKT3_EVENT_WRITE, 1 - 1, 0),
       EVENT_TYPE(EVENT_TYPE_CACHE_FLUSH_AND_INV_EVENT) | EVENT_INDEX(0),
 

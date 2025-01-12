@@ -96,6 +96,8 @@ terakan_shader_impl_compile(terakan_shader_impl * const shader, terakan_device *
       return vk_errorf(device, VK_ERROR_UNKNOWN, "Failed to schedule the shader");
    }
 
+   shader->scratch_item_size_dwords = DIV_ROUND_UP(nir->scratch_size, sizeof(uint32_t));
+
    sfn_shader->get_shader_info(&shader->shader);
 
    /* TODO(Triang3l): has_compressed_msaa_texturing. */
